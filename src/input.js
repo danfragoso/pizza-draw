@@ -4,6 +4,7 @@ import {
   isNodeInGroup, GROUP_HEADER_H,
   captureItemsInRect, autoSizeGroupChain, autoArrangeGroup, collapseGroupTree, deOverlapAllItems,
 } from './state.js';
+import { isLocked } from './session.js';
 
 // ─── Mobile detection ──────────────────────────────────────────────────────
 export const isMobile = window.matchMedia('(pointer: coarse)').matches && window.innerWidth <= 1024;
@@ -57,9 +58,13 @@ let isSpaceDown = false;
 export function initInput(canvas) {
   if (isMobile) {
     document.body.classList.add('is-mobile');
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
-    canvas.addEventListener('touchend',   onTouchEnd,   { passive: false });
+    canvas.addEventListener('touchstart',  onTouchStart,  { passive: false });
+    canvas.addEventListener('touchmove',   onTouchMove,   { passive: false });
+    canvas.addEventListener('touchend',    onTouchEnd,    { passive: false });
+    // Prevent browser-native pinch zoom overriding our camera zoom
+    document.addEventListener('touchmove',    e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange',e => e.preventDefault(), { passive: false });
     return;
   }
 
@@ -85,6 +90,29 @@ function onMouseDown(e) {
 
   // Middle button or space → always pan
   if (e.button === 1 || isSpaceDown) { startPan(e.clientX, e.clientY); return; }
+
+  // Locked: only allow pan + expand/collapse
+  if (isLocked()) {
+    const cg = hitCollapsedGroup(w.x, w.y);
+    if (cg) {
+      cg.collapsed = false;
+      autoArrangeGroup(cg);
+      deOverlapAllItems();
+      updateUI();
+      return;
+    }
+    for (let i = state.groups.length - 1; i >= 0; i--) {
+      const g = state.groups[i];
+      if (!g.collapsed && groupCollapseBtnHitTest(g, w.x, w.y)) {
+        collapseGroupTree(g);
+        deOverlapAllItems();
+        updateUI();
+        return;
+      }
+    }
+    startPan(e.clientX, e.clientY);
+    return;
+  }
 
   if (tool === 'pan')     { startPan(e.clientX, e.clientY); return; }
   if (tool === 'connect') { handleConnectClick(w); return; }
@@ -392,6 +420,13 @@ function onDblClick(e) {
 function onKeyDown(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
+  // Locked: only allow pan (space) and fit
+  if (isLocked()) {
+    if (e.key === ' ')              { isSpaceDown = true; setCursor('grab'); e.preventDefault(); }
+    if (e.key === 'f' || e.key === 'F') fitToScreen();
+    return;
+  }
+
   switch (e.key) {
     case 'v': case 'V':   setTool('select'); break;
     case 'h': case 'H':   setTool('pan');    break;
@@ -534,7 +569,7 @@ function toggleToolbar() {
 
 
 // ─── Touch input (mobile view-only) ───────────────────────────────────────
-let _lastTap   = { time: 0, x: 0, y: 0 };
+let _tapStart   = null;
 let _pinchStart = null;
 
 function onTouchStart(e) {
@@ -542,27 +577,8 @@ function onTouchStart(e) {
 
   if (e.touches.length === 1) {
     const t = e.touches[0];
+    _tapStart = { x: t.clientX, y: t.clientY, time: Date.now() };
 
-    // Double-tap → expand collapsed group
-    const now  = Date.now();
-    const ddx  = t.clientX - _lastTap.x;
-    const ddy  = t.clientY - _lastTap.y;
-    if (now - _lastTap.time < 300 && Math.hypot(ddx, ddy) < 30) {
-      const w  = screenToWorld(t.clientX, t.clientY);
-      const cg = hitCollapsedGroup(w.x, w.y);
-      if (cg) {
-        cg.collapsed = false;
-        autoArrangeGroup(cg);
-        deOverlapAllItems();
-        selectItem('group', cg.id);
-        updateUI();
-      }
-      _lastTap.time = 0;
-      return;
-    }
-    _lastTap = { time: now, x: t.clientX, y: t.clientY };
-
-    // Single-finger pan
     state.drag = {
       type: 'canvas',
       startScreenX: t.clientX, startScreenY: t.clientY,
@@ -571,16 +587,17 @@ function onTouchStart(e) {
   }
 
   if (e.touches.length === 2) {
-    state.drag = null; // cancel pan
-    const t0 = e.touches[0];
-    const t1 = e.touches[1];
+    state.drag = null;
+    _tapStart  = null;
+    const t0   = e.touches[0];
+    const t1   = e.touches[1];
     _pinchStart = {
-      dist:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
-      midX:  (t0.clientX + t1.clientX) / 2,
-      midY:  (t0.clientY + t1.clientY) / 2,
-      camX:  state.camera.x,
-      camY:  state.camera.y,
-      zoom:  state.camera.zoom,
+      dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+      midX: (t0.clientX + t1.clientX) / 2,
+      midY: (t0.clientY + t1.clientY) / 2,
+      camX: state.camera.x,
+      camY: state.camera.y,
+      zoom: state.camera.zoom,
     };
   }
 }
@@ -609,6 +626,10 @@ function onTouchMove(e) {
 
   if (e.touches.length === 1 && state.drag?.type === 'canvas') {
     const t = e.touches[0];
+    // Cancel tap if finger moved more than 8px
+    if (_tapStart && Math.hypot(t.clientX - _tapStart.x, t.clientY - _tapStart.y) > 8) {
+      _tapStart = null;
+    }
     state.camera.x = state.drag.startCamX + (t.clientX - state.drag.startScreenX);
     state.camera.y = state.drag.startCamY + (t.clientY - state.drag.startScreenY);
     updateZoomDisplay();
@@ -616,8 +637,38 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) {
+  // Single-tap: expand collapsed group or collapse expanded group
+  if (_tapStart && e.touches.length === 0) {
+    const dt = Date.now() - _tapStart.time;
+    if (dt < 300) {
+      const w  = screenToWorld(_tapStart.x, _tapStart.y);
+
+      const cg = hitCollapsedGroup(w.x, w.y);
+      if (cg) {
+        cg.collapsed = false;
+        autoArrangeGroup(cg);
+        deOverlapAllItems();
+        selectItem('group', cg.id);
+        updateUI();
+      } else {
+        // Tap on collapse button of an expanded group
+        for (let i = state.groups.length - 1; i >= 0; i--) {
+          const g = state.groups[i];
+          if (g.collapsed) continue;
+          if (groupCollapseBtnHitTest(g, w.x, w.y)) {
+            collapseGroupTree(g);
+            deOverlapAllItems();
+            selectItem('group', g.id);
+            updateUI();
+            break;
+          }
+        }
+      }
+    }
+  }
+
   if (e.touches.length < 2) _pinchStart = null;
-  if (e.touches.length === 0) state.drag = null;
+  if (e.touches.length === 0) { state.drag = null; _tapStart = null; }
 }
 
 // ─── Recursive descendant collector for group drag ────────────────────────

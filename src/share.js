@@ -1,80 +1,44 @@
-import { state } from './state.js';
+import { state }          from './state.js';
+import { session }         from './session.js';
+import { updateDrawing }   from './api.js';
 
-// ─── Compression helpers (deflate-raw + base64url) ────────────────────────
-async function compress(str) {
-  const bytes = new TextEncoder().encode(str);
-  const cs    = new CompressionStream('deflate-raw');
-  const writer = cs.writable.getWriter();
-  writer.write(bytes);
-  writer.close();
-  const buf    = await new Response(cs.readable).arrayBuffer();
-  let binary   = '';
-  for (const b of new Uint8Array(buf)) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-async function decompress(encoded) {
-  const b64    = encoded.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(b64);
-  const bytes  = Uint8Array.from(binary, c => c.charCodeAt(0));
-  const ds     = new DecompressionStream('deflate-raw');
-  const writer = ds.writable.getWriter();
-  writer.write(bytes);
-  writer.close();
-  return new Response(ds.readable).text();
-}
-
-// ─── Encode / decode state ────────────────────────────────────────────────
-export async function encodeCurrentState() {
-  const payload = {
-    v:      1,
+// ─── Serialize / deserialize diagram state ────────────────────────────────
+export function serializeState() {
+  return JSON.stringify({
+    v:      2,
     nodes:  state.nodes,
     edges:  state.edges,
     groups: state.groups,
     camera: state.camera,
-  };
-  return compress(JSON.stringify(payload));
+  });
 }
 
-export async function decodeFromHash(hash) {
+export function deserializeState(raw) {
   try {
-    const encoded = hash.startsWith('#') ? hash.slice(1) : hash;
-    if (!encoded) return null;
-    const json = await decompress(encoded);
-    return JSON.parse(json);
-  } catch {
-    return null;
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (Array.isArray(data.nodes))  state.nodes  = data.nodes;
+    if (Array.isArray(data.edges))  state.edges  = data.edges;
+    if (Array.isArray(data.groups)) state.groups = data.groups;
+    if (data.camera?.zoom)          state.camera = data.camera;
+  } catch (e) {
+    console.error('Failed to deserialize state:', e);
   }
 }
 
-// ─── Save / load ──────────────────────────────────────────────────────────
-export async function saveToURL() {
-  const encoded = await encodeCurrentState();
-  history.replaceState(null, '', '#' + encoded);
-  return window.location.href;
+// ─── Save current drawing to API ──────────────────────────────────────────
+export async function saveDrawing() {
+  if (!session.id || !session.unlocked) return;
+  await updateDrawing(session.id, {
+    drawing: serializeState(),
+    title:   session.title,
+  });
 }
 
-export async function loadFromURL() {
-  const hash = window.location.hash;
-  if (!hash || hash === '#') return false;
-
-  const data = await decodeFromHash(hash);
-  if (!data) return false;
-
-  if (Array.isArray(data.nodes))  state.nodes  = data.nodes;
-  if (Array.isArray(data.edges))  state.edges  = data.edges;
-  if (Array.isArray(data.groups)) state.groups = data.groups;
-  if (data.camera && typeof data.camera.zoom === 'number') {
-    state.camera = data.camera;
-  }
-
-  return true;
-}
-
-// ─── Auto-save (debounced, runs after state settles) ─────────────────────
+// ─── Debounced auto-save ──────────────────────────────────────────────────
 let _saveTimer = null;
 
 export function scheduleSave() {
+  if (!session.id || !session.unlocked) return;
   clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(saveToURL, 1500);
+  _saveTimer = setTimeout(() => saveDrawing().catch(console.error), 2000);
 }

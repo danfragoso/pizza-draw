@@ -65,6 +65,6 @@ export function getThemeName() {
 }
 
 function updateThemeIcon() {
-  const icon = document.getElementById('theme-icon');
-  if (icon) icon.textContent = _current === 'dark' ? 'light_mode' : 'dark_mode';
+  const label = _current === 'dark' ? 'light_mode' : 'dark_mode';
+  document.querySelectorAll('.js-theme-icon').forEach(el => { el.textContent = label; });
 }

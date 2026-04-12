@@ -1,86 +1,133 @@
 import './style.css';
-import { initTheme } from './theme.js';
-import { state, createNode, createEdge, createGroup } from './state.js';
-import { initRenderer, render } from './render.js';
+import { initTheme, toggleTheme } from './theme.js';
+import { clearState }             from './state.js';
+import { initRenderer, render }   from './render.js';
 import { initInput, fitToScreen } from './input.js';
-import { initUI } from './ui.js';
-import { loadFromURL } from './share.js';
+import { initUI, updateLockState } from './ui.js';
+import { session }                 from './session.js';
+import { listDrawings, createDrawing, getDrawing } from './api.js';
+import { deserializeState }        from './share.js';
 
-function seedDemo() {
-  const cx = window.innerWidth  / 2;
-  const cy = window.innerHeight / 2;
+// ─── Routing ───────────────────────────────────────────────────────────────
+const DRAWING_ID = new URLSearchParams(window.location.search).get('id');
 
-  // ── Nodes ──
-  const internet = createNode('cloud',       cx,       cy - 210);
-  const fw       = createNode('firewall',    cx,       cy - 110);
-  const router   = createNode('router',      cx,       cy -  10);
-  const sw1      = createNode('switch',      cx - 170, cy + 100);
-  const sw2      = createNode('switch',      cx + 170, cy + 100);
-  const srv1     = createNode('server',      cx - 280, cy + 220);
-  const srv2     = createNode('server',      cx -  80, cy + 220);
-  const db       = createNode('database',    cx +  80, cy + 220);
-  const ws       = createNode('workstation', cx + 280, cy + 220);
-
-  internet.label = 'Internet';
-  fw.label       = 'Firewall';
-  router.label   = 'Core Router';
-  sw1.label      = 'SW-01';
-  sw2.label      = 'SW-02';
-  srv1.label     = 'Web Server';
-  srv2.label     = 'App Server';
-  db.label       = 'Database';
-  ws.label       = 'Workstation';
-
-  state.nodes.push(internet, fw, router, sw1, sw2, srv1, srv2, db, ws);
-
-  // ── Edges ──
-  const e0 = createEdge(internet.id, fw.id);
-  const e1 = createEdge(fw.id,       router.id);
-  const e2 = createEdge(router.id,   sw1.id);
-  const e3 = createEdge(router.id,   sw2.id);
-  const e4 = createEdge(sw1.id,      srv1.id);
-  const e5 = createEdge(sw1.id,      srv2.id);
-  const e6 = createEdge(sw2.id,      db.id);
-  const e7 = createEdge(sw2.id,      ws.id);
-
-  e0.speed = 2.5; e0.bidirectional = true; e0.label = 'WAN';
-  e1.speed = 2.0; e1.label = '10 Gbps';
-  e2.speed = 1.5; e3.speed = 1.5;
-  e4.speed = 1.0; e5.speed = 1.2;
-  e6.speed = 0.8; e7.speed = 0.6;
-
-  state.edges.push(e0, e1, e2, e3, e4, e5, e6, e7);
-
-  // ── Groups / subnets ──
-  const dmzGroup = createGroup(cx, cy - 60, 200, 200, 2); // pink
-  dmzGroup.label = 'DMZ  10.0.0.0/24';
-
-  const appGroup = createGroup(cx - 170, cy + 170, 320, 200, 1); // blue
-  appGroup.label = 'App Subnet  192.168.1.0/24';
-
-  const dbGroup = createGroup(cx + 170, cy + 170, 320, 200, 0); // green
-  dbGroup.label = 'Data Subnet  192.168.2.0/24';
-
-  state.groups.push(dmzGroup, appGroup, dbGroup);
+// ─── Shared escape helper ──────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-async function main() {
-  const canvas = document.getElementById('canvas');
+// ═══════════════════════════════════════════════════════════════════════════
+// HOME SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+async function initHome() {
+  document.getElementById('home-screen').style.display = '';
 
-  initTheme();
+  document.getElementById('home-theme-toggle')
+    ?.addEventListener('click', toggleTheme);
+
+  document.getElementById('new-drawing-btn')
+    ?.addEventListener('click', async () => {
+      const btn = document.getElementById('new-drawing-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined spin">progress_activity</span> Creating…';
+      try {
+        const record = await createDrawing({ title: 'Untitled Drawing' });
+        const id = record.id ?? record.data?.id;
+        window.location.href = `/?id=${id}`;
+      } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined">add</span> New Drawing';
+      }
+    });
+
+  try {
+    const drawings = await listDrawings();
+    renderDrawingsList(drawings);
+  } catch (e) {
+    console.error(e);
+    document.getElementById('drawings-grid').innerHTML =
+      '<p class="drawings-empty">Could not load drawings.</p>';
+  }
+}
+
+function renderDrawingsList(drawings) {
+  const grid = document.getElementById('drawings-grid');
+  if (!grid) return;
+
+  if (!drawings.length) {
+    grid.innerHTML = '<p class="drawings-empty">No drawings yet — create your first one above.</p>';
+    return;
+  }
+
+  grid.innerHTML = [...drawings]
+    .sort((a, b) => b.id - a.id)
+    .map(d => `
+      <a href="/?id=${d.id}" class="drawing-card">
+        <div class="drawing-card-thumb">
+          <span class="material-symbols-outlined">${d.password ? 'lock' : 'schema'}</span>
+        </div>
+        <div class="drawing-card-body">
+          <span class="drawing-card-title">${escHtml(d.title || 'Untitled Drawing')}</span>
+          <span class="drawing-card-meta">#${d.id}${d.password ? ' · Protected' : ''}</span>
+        </div>
+        <span class="material-symbols-outlined drawing-card-arrow">chevron_right</span>
+      </a>
+    `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DRAWING SCREEN
+// ═══════════════════════════════════════════════════════════════════════════
+async function initApp() {
+  document.getElementById('app-screen').style.display = '';
+
+  const canvas = document.getElementById('canvas');
   initRenderer(canvas);
   initInput(canvas);
   initUI();
 
-  // Restore from shared URL if a hash is present
-  await loadFromURL();
-  fitToScreen();
+  // Start render loop right away so the canvas is visible while loading
+  let loopStarted = false;
+  function loop(ts) { render(ts); requestAnimationFrame(loop); }
+  if (!loopStarted) { loopStarted = true; requestAnimationFrame(loop); }
 
-  function loop(timestamp) {
-    render(timestamp);
-    requestAnimationFrame(loop);
+  try {
+    const row = await getDrawing(DRAWING_ID);
+
+    session.id           = row.id;
+    session.title        = row.title  || 'Untitled Drawing';
+    session.hasPassword  = !!row.password;
+    session.passwordHash = row.password || null;
+    session.unlocked     = !row.password;
+
+    clearState();
+    if (row.drawing) deserializeState(row.drawing);
+
+    const titleInput = document.getElementById('drawing-title');
+    if (titleInput) titleInput.value = session.title;
+
+    updateLockState();
+    fitToScreen();
+  } catch (e) {
+    console.error('Failed to load drawing:', e);
+    // Still usable as blank canvas; let the user know
+    import('./ui.js').then(({ showToast }) =>
+      showToast('error', 'Could not load drawing — starting blank'));
   }
-  requestAnimationFrame(loop);
 }
 
-main();
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTRY
+// ═══════════════════════════════════════════════════════════════════════════
+async function main() {
+  initTheme();
+  if (DRAWING_ID) {
+    await initApp();
+  } else {
+    await initHome();
+  }
+}
+
+main().catch(console.error);

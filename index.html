@@ -10,160 +10,223 @@
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <canvas id="canvas"></canvas>
 
-  <!-- App header -->
-  <header id="app-header">
-    <div class="header-left">
-      <button id="toolbar-toggle" class="icon-btn" title="Toggle toolbar (T)">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       HOME SCREEN
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="home-screen" style="display:none">
+    <header class="home-header">
       <div class="app-logo">
         <span class="logo-emoji">🍕</span>
         <span class="logo-text">PizzaDraw</span>
       </div>
-    </div>
-    <div class="header-controls">
-      <div id="zoom-display" class="zoom-display">100%</div>
-      <button id="zoom-fit" class="icon-btn" title="Fit to screen (F)">
-        <span class="material-symbols-outlined">fit_screen</span>
+      <button id="home-theme-toggle" class="icon-btn" title="Toggle theme">
+        <span class="material-symbols-outlined js-theme-icon">dark_mode</span>
       </button>
-      <div class="divider-v"></div>
-      <button id="share-btn" class="share-btn" title="Copy share link">
-        <span class="material-symbols-outlined">share</span>
-        <span class="share-btn-label">Share</span>
-      </button>
-      <div class="divider-v"></div>
-      <button id="theme-toggle" class="icon-btn" title="Toggle theme">
-        <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
-      </button>
-    </div>
-  </header>
+    </header>
 
-  <!-- Left toolbar -->
-  <aside id="toolbar">
+    <main class="home-main">
+      <section class="home-hero">
+        <h1 class="home-title">Network Diagrams,<br>Simplified.</h1>
+        <p class="home-subtitle">Design and share infrastructure maps — no login required.</p>
+        <button id="new-drawing-btn" class="primary-btn">
+          <span class="material-symbols-outlined">add</span>
+          New Drawing
+        </button>
+      </section>
 
-    <!-- Navigation tools -->
-    <div class="toolbar-nav">
-      <button class="tool-btn active" data-tool="select" title="Select (V)">
-        <span class="material-symbols-outlined">arrow_selector_tool</span>
-      </button>
-      <button class="tool-btn" data-tool="pan" title="Pan (H)">
-        <span class="material-symbols-outlined">pan_tool</span>
-      </button>
-      <button class="tool-btn" data-tool="connect" title="Connect (C)">
-        <span class="material-symbols-outlined">cable</span>
-      </button>
-      <button class="tool-btn" data-tool="draw-group" title="Draw Group / Subnet (G)">
-        <span class="material-symbols-outlined">select_all</span>
-      </button>
-    </div>
-
-    <!-- Network -->
-    <div class="tool-section" data-section="network">
-      <button class="tool-section-header">
-        <span class="section-label">Network</span>
-        <span class="material-symbols-outlined collapse-icon">expand_less</span>
-      </button>
-      <div class="tool-section-body">
-        <button class="tool-btn" data-tool="add-router"        title="Router">          <span class="material-symbols-outlined">router</span></button>
-        <button class="tool-btn" data-tool="add-switch"        title="Switch">          <span class="material-symbols-outlined">device_hub</span></button>
-        <button class="tool-btn" data-tool="add-access-point"  title="Access Point">    <span class="material-symbols-outlined">wifi_tethering</span></button>
-        <button class="tool-btn" data-tool="add-modem"         title="Modem">           <span class="material-symbols-outlined">settings_input_antenna</span></button>
-      </div>
-    </div>
-
-    <!-- Compute -->
-    <div class="tool-section" data-section="compute">
-      <button class="tool-section-header">
-        <span class="section-label">Compute</span>
-        <span class="material-symbols-outlined collapse-icon">expand_less</span>
-      </button>
-      <div class="tool-section-body">
-        <button class="tool-btn" data-tool="add-server"     title="Server">          <span class="material-symbols-outlined">dns</span></button>
-        <button class="tool-btn" data-tool="add-container"  title="Container / Pod"> <span class="material-symbols-outlined">widgets</span></button>
-      </div>
-    </div>
-
-    <!-- Services -->
-    <div class="tool-section" data-section="services">
-      <button class="tool-section-header">
-        <span class="section-label">Services</span>
-        <span class="material-symbols-outlined collapse-icon">expand_less</span>
-      </button>
-      <div class="tool-section-body">
-        <button class="tool-btn" data-tool="add-cloud"          title="Cloud">           <span class="material-symbols-outlined">cloud</span></button>
-        <button class="tool-btn" data-tool="add-database"       title="Database">        <span class="material-symbols-outlined">storage</span></button>
-        <button class="tool-btn" data-tool="add-nas"            title="NAS / Storage">   <span class="material-symbols-outlined">hard_drive</span></button>
-        <button class="tool-btn" data-tool="add-load-balancer"  title="Load Balancer">   <span class="material-symbols-outlined">balance</span></button>
-        <button class="tool-btn" data-tool="add-cdn"            title="CDN">             <span class="material-symbols-outlined">public</span></button>
-        <button class="tool-btn" data-tool="add-queue"          title="Message Queue">   <span class="material-symbols-outlined">queue</span></button>
-        <button class="tool-btn" data-tool="add-proxy"          title="Proxy">           <span class="material-symbols-outlined">sync_alt</span></button>
-        <button class="tool-btn" data-tool="add-monitoring"     title="Monitoring">      <span class="material-symbols-outlined">monitor_heart</span></button>
-      </div>
-    </div>
-
-    <!-- Endpoints -->
-    <div class="tool-section" data-section="endpoints">
-      <button class="tool-section-header">
-        <span class="section-label">Endpoints</span>
-        <span class="material-symbols-outlined collapse-icon">expand_less</span>
-      </button>
-      <div class="tool-section-body">
-        <button class="tool-btn" data-tool="add-workstation" title="Workstation">   <span class="material-symbols-outlined">computer</span></button>
-        <button class="tool-btn" data-tool="add-laptop"      title="Laptop">        <span class="material-symbols-outlined">laptop</span></button>
-        <button class="tool-btn" data-tool="add-phone"       title="Smartphone">    <span class="material-symbols-outlined">smartphone</span></button>
-        <button class="tool-btn" data-tool="add-tablet"      title="Tablet">        <span class="material-symbols-outlined">tablet</span></button>
-        <button class="tool-btn" data-tool="add-iot-device"  title="IoT Device">    <span class="material-symbols-outlined">sensors</span></button>
-        <button class="tool-btn" data-tool="add-printer"     title="Printer">       <span class="material-symbols-outlined">print</span></button>
-        <button class="tool-btn" data-tool="add-camera"      title="IP Camera">     <span class="material-symbols-outlined">videocam</span></button>
-      </div>
-    </div>
-
-    <!-- Security -->
-    <div class="tool-section" data-section="security">
-      <button class="tool-section-header">
-        <span class="section-label">Security</span>
-        <span class="material-symbols-outlined collapse-icon">expand_less</span>
-      </button>
-      <div class="tool-section-body">
-        <button class="tool-btn" data-tool="add-firewall"  title="Firewall">      <span class="material-symbols-outlined">security</span></button>
-        <button class="tool-btn" data-tool="add-vpn"       title="VPN Gateway">   <span class="material-symbols-outlined">vpn_key</span></button>
-        <button class="tool-btn" data-tool="add-ids"       title="IDS / IPS">     <span class="material-symbols-outlined">gpp_bad</span></button>
-        <button class="tool-btn" data-tool="add-siem"      title="SIEM">          <span class="material-symbols-outlined">manage_search</span></button>
-        <button class="tool-btn" data-tool="add-honeypot"  title="Honeypot">      <span class="material-symbols-outlined">bug_report</span></button>
-      </div>
-    </div>
-
-    <div class="toolbar-spacer"></div>
-    <div class="toolbar-footer">
-      <button class="tool-btn danger" id="delete-btn" title="Delete selected (⌫)" disabled>
-        <span class="material-symbols-outlined">delete</span>
-      </button>
-    </div>
-  </aside>
-
-  <!-- Right properties panel -->
-  <aside id="panel" class="panel-hidden">
-    <div class="panel-header">
-      <span class="panel-title" id="panel-title">Properties</span>
-      <button class="icon-btn panel-close" id="panel-close" title="Close">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <div id="panel-content"></div>
-  </aside>
-
-  <!-- Tooltip -->
-  <div id="tooltip" class="tooltip hidden"></div>
-
-  <!-- Connect hint -->
-  <div id="connect-hint" class="connect-hint hidden">
-    <span class="material-symbols-outlined">cable</span>
-    Click a node to connect — <kbd>Esc</kbd> to cancel
+      <section class="drawings-section">
+        <div id="drawings-grid" class="drawings-grid">
+          <div class="drawings-loading">
+            <span class="material-symbols-outlined spin">progress_activity</span>
+            Loading drawings…
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div id="toast" class="toast-hidden"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       APP / DRAWING SCREEN
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="app-screen" style="display:none">
+    <canvas id="canvas"></canvas>
+
+    <!-- App header -->
+    <header id="app-header">
+      <div class="header-left">
+        <a href="/" class="icon-btn home-btn" title="Back to home">
+          <span class="logo-emoji" style="font-size:18px;line-height:1">🍕</span>
+        </a>
+        <button id="toolbar-toggle" class="icon-btn" title="Toggle toolbar (T)">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <input id="drawing-title" class="drawing-title-input"
+               value="Untitled Drawing" spellcheck="false"
+               title="Click to rename" />
+      </div>
+      <div class="header-controls">
+        <div id="zoom-display" class="zoom-display">100%</div>
+        <button id="zoom-fit" class="icon-btn" title="Fit to screen (F)">
+          <span class="material-symbols-outlined">fit_screen</span>
+        </button>
+        <div class="divider-v"></div>
+        <button id="share-btn" class="share-btn" title="Copy share link">
+          <span class="material-symbols-outlined">share</span>
+          <span class="share-btn-label">Share</span>
+        </button>
+        <div class="divider-v"></div>
+        <button id="clone-drawing-btn" class="icon-btn" title="Clone drawing">
+          <span class="material-symbols-outlined">content_copy</span>
+        </button>
+        <button id="delete-drawing-btn" class="icon-btn icon-btn-danger" title="Delete drawing" style="display:none">
+          <span class="material-symbols-outlined">delete_forever</span>
+        </button>
+        <button id="lock-btn" class="icon-btn" title="Password protection">
+          <span class="material-symbols-outlined" id="lock-icon">lock_open</span>
+        </button>
+        <button id="theme-toggle" class="icon-btn" title="Toggle theme">
+          <span class="material-symbols-outlined js-theme-icon">dark_mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Left toolbar -->
+    <aside id="toolbar">
+      <div class="toolbar-nav">
+        <button class="tool-btn active" data-tool="select" title="Select (V)">
+          <span class="material-symbols-outlined">arrow_selector_tool</span>
+        </button>
+        <button class="tool-btn" data-tool="pan" title="Pan (H)">
+          <span class="material-symbols-outlined">pan_tool</span>
+        </button>
+        <button class="tool-btn" data-tool="connect" title="Connect (C)">
+          <span class="material-symbols-outlined">cable</span>
+        </button>
+        <button class="tool-btn" data-tool="draw-group" title="Draw Group / Subnet (G)">
+          <span class="material-symbols-outlined">select_all</span>
+        </button>
+      </div>
+
+      <div class="tool-section" data-section="network">
+        <button class="tool-section-header">
+          <span class="section-label">Network</span>
+          <span class="material-symbols-outlined collapse-icon">expand_less</span>
+        </button>
+        <div class="tool-section-body">
+          <button class="tool-btn" data-tool="add-router"        title="Router">        <span class="material-symbols-outlined">router</span></button>
+          <button class="tool-btn" data-tool="add-switch"        title="Switch">        <span class="material-symbols-outlined">device_hub</span></button>
+          <button class="tool-btn" data-tool="add-access-point"  title="Access Point">  <span class="material-symbols-outlined">wifi_tethering</span></button>
+          <button class="tool-btn" data-tool="add-modem"         title="Modem">         <span class="material-symbols-outlined">settings_input_antenna</span></button>
+        </div>
+      </div>
+
+      <div class="tool-section" data-section="compute">
+        <button class="tool-section-header">
+          <span class="section-label">Compute</span>
+          <span class="material-symbols-outlined collapse-icon">expand_less</span>
+        </button>
+        <div class="tool-section-body">
+          <button class="tool-btn" data-tool="add-server"     title="Server">         <span class="material-symbols-outlined">dns</span></button>
+          <button class="tool-btn" data-tool="add-container"  title="Container / Pod"><span class="material-symbols-outlined">widgets</span></button>
+        </div>
+      </div>
+
+      <div class="tool-section" data-section="services">
+        <button class="tool-section-header">
+          <span class="section-label">Services</span>
+          <span class="material-symbols-outlined collapse-icon">expand_less</span>
+        </button>
+        <div class="tool-section-body">
+          <button class="tool-btn" data-tool="add-cloud"          title="Cloud">         <span class="material-symbols-outlined">cloud</span></button>
+          <button class="tool-btn" data-tool="add-database"       title="Database">      <span class="material-symbols-outlined">storage</span></button>
+          <button class="tool-btn" data-tool="add-nas"            title="NAS / Storage"> <span class="material-symbols-outlined">hard_drive</span></button>
+          <button class="tool-btn" data-tool="add-load-balancer"  title="Load Balancer"> <span class="material-symbols-outlined">balance</span></button>
+          <button class="tool-btn" data-tool="add-cdn"            title="CDN">           <span class="material-symbols-outlined">public</span></button>
+          <button class="tool-btn" data-tool="add-queue"          title="Message Queue"> <span class="material-symbols-outlined">queue</span></button>
+          <button class="tool-btn" data-tool="add-proxy"          title="Proxy">         <span class="material-symbols-outlined">sync_alt</span></button>
+          <button class="tool-btn" data-tool="add-monitoring"     title="Monitoring">    <span class="material-symbols-outlined">monitor_heart</span></button>
+        </div>
+      </div>
+
+      <div class="tool-section" data-section="endpoints">
+        <button class="tool-section-header">
+          <span class="section-label">Endpoints</span>
+          <span class="material-symbols-outlined collapse-icon">expand_less</span>
+        </button>
+        <div class="tool-section-body">
+          <button class="tool-btn" data-tool="add-workstation" title="Workstation">  <span class="material-symbols-outlined">computer</span></button>
+          <button class="tool-btn" data-tool="add-laptop"      title="Laptop">       <span class="material-symbols-outlined">laptop</span></button>
+          <button class="tool-btn" data-tool="add-phone"       title="Smartphone">   <span class="material-symbols-outlined">smartphone</span></button>
+          <button class="tool-btn" data-tool="add-tablet"      title="Tablet">       <span class="material-symbols-outlined">tablet</span></button>
+          <button class="tool-btn" data-tool="add-iot-device"  title="IoT Device">   <span class="material-symbols-outlined">sensors</span></button>
+          <button class="tool-btn" data-tool="add-printer"     title="Printer">      <span class="material-symbols-outlined">print</span></button>
+          <button class="tool-btn" data-tool="add-camera"      title="IP Camera">    <span class="material-symbols-outlined">videocam</span></button>
+        </div>
+      </div>
+
+      <div class="tool-section" data-section="security">
+        <button class="tool-section-header">
+          <span class="section-label">Security</span>
+          <span class="material-symbols-outlined collapse-icon">expand_less</span>
+        </button>
+        <div class="tool-section-body">
+          <button class="tool-btn" data-tool="add-firewall"  title="Firewall">    <span class="material-symbols-outlined">security</span></button>
+          <button class="tool-btn" data-tool="add-vpn"       title="VPN Gateway"> <span class="material-symbols-outlined">vpn_key</span></button>
+          <button class="tool-btn" data-tool="add-ids"       title="IDS / IPS">   <span class="material-symbols-outlined">gpp_bad</span></button>
+          <button class="tool-btn" data-tool="add-siem"      title="SIEM">        <span class="material-symbols-outlined">manage_search</span></button>
+          <button class="tool-btn" data-tool="add-honeypot"  title="Honeypot">    <span class="material-symbols-outlined">bug_report</span></button>
+        </div>
+      </div>
+
+      <div class="toolbar-spacer"></div>
+      <div class="toolbar-footer">
+        <button class="tool-btn danger" id="delete-btn" title="Delete selected (⌫)" disabled>
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Right properties panel -->
+    <aside id="panel" class="panel-hidden">
+      <div class="panel-header">
+        <span class="panel-title" id="panel-title">Properties</span>
+        <button class="icon-btn panel-close" id="panel-close" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div id="panel-content"></div>
+    </aside>
+
+    <!-- Tooltip -->
+    <div id="tooltip" class="tooltip hidden"></div>
+
+    <!-- Connect hint -->
+    <div id="connect-hint" class="connect-hint hidden">
+      <span class="material-symbols-outlined">cable</span>
+      Click a node to connect — <kbd>Esc</kbd> to cancel
+    </div>
+
+    <div id="toast" class="toast-hidden"></div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MODAL (shared between home + app)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title" class="modal-heading"></h3>
+      <p  id="modal-desc"  class="modal-desc"></p>
+      <input id="modal-input" class="panel-input modal-field" type="password"
+             placeholder="" autocomplete="new-password" />
+      <div class="modal-actions">
+        <button id="modal-cancel"  class="modal-btn">Cancel</button>
+        <button id="modal-confirm" class="modal-btn modal-btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

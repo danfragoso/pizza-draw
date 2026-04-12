@@ -361,6 +361,20 @@ export function deOverlapAllItems() {
   }
 }
 
+// ─── Reset all diagram state ───────────────────────────────────────────────
+export function clearState() {
+  state.nodes        = [];
+  state.edges        = [];
+  state.groups       = [];
+  state.selected     = null;
+  state.hovered      = null;
+  state.tool         = 'select';
+  state.connectFrom  = null;
+  state.drawingGroup = null;
+  state.camera       = { x: 0, y: 0, zoom: 1 };
+  state.drag         = null;
+}
+
 // ─── Auto-arrange: lay out member nodes in a grid, then auto-size ──────────
 export function autoArrangeGroup(group) {
   const members = state.nodes.filter(n => n.groupId === group.id);

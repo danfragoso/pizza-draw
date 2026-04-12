@@ -422,13 +422,14 @@ function drawEdges(c, zoom, timestamp) {
       ctx.setLineDash([]);
 
       if (edge.bidirectional) {
-        const offset2 = (timestamp * speed / 1000) % period;
+        // Phase-offset by half period so reverse dashes don't perfectly overlap forward ones
+        const offset2 = -(((timestamp * speed / 1000) + period / 2) % period);
         ctx.beginPath();
         ctx.moveTo(dp.x, dp.y);
         ctx.quadraticCurveTo(cp.x, cp.y, sp.x, sp.y);
-        ctx.strokeStyle = c.primaryAlpha.replace('0.18', '0.65');
-        ctx.lineWidth = lw * 1.2;
-        ctx.setLineDash([dashLen * 0.7, gapLen * 1.2]);
+        ctx.strokeStyle = c.primary;
+        ctx.lineWidth = lw * 1.6;
+        ctx.setLineDash([dashLen, gapLen]);
         ctx.lineDashOffset = offset2;
         ctx.stroke();
         ctx.setLineDash([]);
@@ -438,6 +439,12 @@ function drawEdges(c, zoom, timestamp) {
     const arrowAngle = Math.atan2(dp.y - cp.y, dp.x - cp.x);
     drawArrow(dp.x, dp.y, arrowAngle, 10 / zoom,
       isSelected ? c.primary : c.edgeBase, lw);
+
+    if (edge.bidirectional) {
+      const srcArrowAngle = Math.atan2(sp.y - cp.y, sp.x - cp.x);
+      drawArrow(sp.x, sp.y, srcArrowAngle, 10 / zoom,
+        isSelected ? c.primary : c.edgeBase, lw);
+    }
 
     if (edge.label) {
       const fsz = 11; // world units
