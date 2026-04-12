@@ -720,8 +720,16 @@ html, body {
   display: none;
 }
 
-/* ─── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  #toolbar { left: 8px; top: 56px; bottom: 8px; }
-  #panel   { right: 8px; top: 56px; bottom: 8px; width: calc(100vw - 16px); }
-}
+/* ─── Mobile (touch / view-only) ─────────────────────────────────────────── */
+#canvas { touch-action: none; }
+
+body.is-mobile #toolbar,
+body.is-mobile #panel,
+body.is-mobile #toolbar-toggle,
+body.is-mobile #zoom-display,
+body.is-mobile #zoom-fit,
+body.is-mobile #share-btn,
+body.is-mobile .divider-v { display: none !important; }
+
+body.is-mobile #app-header { padding: 0 16px; }
+body.is-mobile .app-logo   { margin-left: 0; }

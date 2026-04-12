@@ -4,6 +4,9 @@ import {
   isNodeInGroup, GROUP_HEADER_H,
   captureItemsInRect, autoSizeGroupChain, autoArrangeGroup, collapseGroupTree, deOverlapAllItems,
 } from './state.js';
+
+// ─── Mobile detection ──────────────────────────────────────────────────────
+export const isMobile = window.matchMedia('(pointer: coarse)').matches && window.innerWidth <= 1024;
 import {
   ghostMouseWorld, edgeHitTest,
   groupHeaderHitTest, groupCollapseBtnHitTest,
@@ -52,6 +55,14 @@ function hitGroupHeader(wx, wy) {
 let isSpaceDown = false;
 
 export function initInput(canvas) {
+  if (isMobile) {
+    document.body.classList.add('is-mobile');
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+    canvas.addEventListener('touchend',   onTouchEnd,   { passive: false });
+    return;
+  }
+
   canvas.addEventListener('mousedown',   onMouseDown);
   canvas.addEventListener('mousemove',   onMouseMove);
   canvas.addEventListener('mouseup',     onMouseUp);
@@ -521,6 +532,93 @@ function toggleToolbar() {
   if (tb) tb.classList.toggle('toolbar-hidden');
 }
 
+
+// ─── Touch input (mobile view-only) ───────────────────────────────────────
+let _lastTap   = { time: 0, x: 0, y: 0 };
+let _pinchStart = null;
+
+function onTouchStart(e) {
+  e.preventDefault();
+
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+
+    // Double-tap → expand collapsed group
+    const now  = Date.now();
+    const ddx  = t.clientX - _lastTap.x;
+    const ddy  = t.clientY - _lastTap.y;
+    if (now - _lastTap.time < 300 && Math.hypot(ddx, ddy) < 30) {
+      const w  = screenToWorld(t.clientX, t.clientY);
+      const cg = hitCollapsedGroup(w.x, w.y);
+      if (cg) {
+        cg.collapsed = false;
+        autoArrangeGroup(cg);
+        deOverlapAllItems();
+        selectItem('group', cg.id);
+        updateUI();
+      }
+      _lastTap.time = 0;
+      return;
+    }
+    _lastTap = { time: now, x: t.clientX, y: t.clientY };
+
+    // Single-finger pan
+    state.drag = {
+      type: 'canvas',
+      startScreenX: t.clientX, startScreenY: t.clientY,
+      startCamX: state.camera.x, startCamY: state.camera.y,
+    };
+  }
+
+  if (e.touches.length === 2) {
+    state.drag = null; // cancel pan
+    const t0 = e.touches[0];
+    const t1 = e.touches[1];
+    _pinchStart = {
+      dist:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+      midX:  (t0.clientX + t1.clientX) / 2,
+      midY:  (t0.clientY + t1.clientY) / 2,
+      camX:  state.camera.x,
+      camY:  state.camera.y,
+      zoom:  state.camera.zoom,
+    };
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+
+  if (e.touches.length === 2 && _pinchStart) {
+    const t0    = e.touches[0];
+    const t1    = e.touches[1];
+    const midX  = (t0.clientX + t1.clientX) / 2;
+    const midY  = (t0.clientY + t1.clientY) / 2;
+    const dist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    const scale = dist / _pinchStart.dist;
+    const newZoom = Math.max(0.08, Math.min(4, _pinchStart.zoom * scale));
+
+    // Keep world point under pinch midpoint stationary
+    const wx = (midX - _pinchStart.camX) / _pinchStart.zoom;
+    const wy = (midY - _pinchStart.camY) / _pinchStart.zoom;
+    state.camera.zoom = newZoom;
+    state.camera.x    = midX - wx * newZoom + (midX - _pinchStart.midX);
+    state.camera.y    = midY - wy * newZoom + (midY - _pinchStart.midY);
+    updateZoomDisplay();
+    return;
+  }
+
+  if (e.touches.length === 1 && state.drag?.type === 'canvas') {
+    const t = e.touches[0];
+    state.camera.x = state.drag.startCamX + (t.clientX - state.drag.startScreenX);
+    state.camera.y = state.drag.startCamY + (t.clientY - state.drag.startScreenY);
+    updateZoomDisplay();
+  }
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length < 2) _pinchStart = null;
+  if (e.touches.length === 0) state.drag = null;
+}
 
 // ─── Recursive descendant collector for group drag ────────────────────────
 // Returns offsets for ALL nodes and groups in the subtree rooted at `group`,
