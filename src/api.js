@@ -1,5 +1,4 @@
-const BASE_URL = 'https://database.pizzaria.foundation/stress/draw';
-const API_KEY  = 'pz_live_AZRPf_NaXUaBMdL3wSz4iHAj8HG6aZElqeko7mO1Odo=';
+const BASE_URL = '/api';
 
 // ─── Raw query helper ──────────────────────────────────────────────────────
 async function query(sql, params = []) {
@@ -7,7 +6,6 @@ async function query(sql, params = []) {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
-      'Authorization': `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({ sql, params }),
   });
